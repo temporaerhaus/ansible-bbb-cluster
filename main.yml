@@ -1,0 +1,62 @@
+---
+- name: Base
+  hosts: all
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    ufw_reset: yes
+    ufw_applications:
+     - name: "OpenSSH"
+  roles:
+    - weareinteractive.ufw
+  tasks:
+    - name: Ensure wrong hostname is not in hosts file
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '{{ ansible_hostname }}$'
+        state: absent
+        backup: yes
+      when: ansible_hostname != inventory_hostname_short
+
+    - name: Ensure Hostname
+      hostname:
+        name: '{{ inventory_hostname_short }}'
+      when: ansible_hostname != inventory_hostname_short
+
+    - name: Ensure Hostname in hosts file
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '{{ inventory_hostname_short }}$'
+        line: '{{ ansible_default_ipv4.address }} {{ inventory_hostname }} {{ inventory_hostname_short }}'
+        state: present
+      when: ansible_default_ipv4.address is defined
+
+- name: Monitored host
+  hosts: all
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    _node_exporter_binary_install_dir: '/opt/node_exporter'
+    _node_exporter_system_group: 'prometheus'
+    _node_exporter_system_user: 'prometheus'
+    ufw_reset: no
+    ufw_applications:
+     - name: "node-exporter"
+  pre_tasks:
+    - name: Ensure node-exporter config for ufw
+      copy:
+        content: |
+          [node-exporter]
+          title=node-exporter
+          description=prometheus node exporter
+          ports=9100/tcp
+        mode: 0644
+        dest: /etc/ufw/applications.d/node-exporter
+  roles:
+    - cloudalchemy.node-exporter
+    - weareinteractive.ufw
+
+- import_playbook: bbb.yml
+- import_playbook: loadbalancer.yml

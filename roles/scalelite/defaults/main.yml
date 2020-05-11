@@ -1,0 +1,6 @@
+---
+scalelite_version: "v1.0.2"
+scalelite_listen_address: "0.0.0.0"
+scalelite_listen_port: "3000"
+scalelite_database_url: "postgresql://scalelite:trust@127.0.0.1:5432/scalelite"
+scalelite_redis_url: "redis://127.0.0.1:6379"

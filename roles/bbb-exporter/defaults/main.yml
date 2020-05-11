@@ -1,0 +1,6 @@
+---
+bbb_exporter_version: "v0.2.0"
+bbb_exporter_listen_address: "0.0.0.0"
+bbb_exporter_listen_port: "9688"
+#bbb_exporter_api_base_url: 
+#bbb_exporter_api_secret: 

@@ -1,0 +1,121 @@
+---
+- name: Loadbalancer
+  hosts: loadbalancer
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    certbot_auto_renew: no # using the system cronjob, not another one
+    certbot_create_if_missing: yes
+    certbot_create_method: standalone
+    certbot_admin_email: "{{ letsencrypt_email }}"
+    certbot_certs:
+      - domains:
+        - "{{ ansible_fqdn }}"
+        - "bbb.ulm.dev"
+        # ^ FIXME: extract into var
+    nginx_ppa_use: no # using 20.04, focal - not available in the ppa yet
+    nginx_remove_default_vhost: yes
+    nginx_server_tokens: "off"
+    nginx_extra_http_options: |
+      proxy_buffering    off;
+      proxy_set_header   Host $http_host;
+      proxy_set_header   X-Real-IP $remote_addr;
+      proxy_set_header   X-Scheme $scheme;
+      proxy_set_header   X-Forwarded-Proto $scheme;
+      proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Request-Id $request_id;
+    nginx_vhosts:
+      - filename: "80.conf"
+        listen: "80"
+        server_name: "{{ ansible_fqdn }}"
+        return: "301 https://$host$request_uri"
+      - filename: "443.conf"
+        listen: "443 ssl http2"
+        server_name: "{{ ansible_fqdn }} bbb.ulm.dev"
+        # ^ FIXME: extract second server_name into var
+        extra_parameters: |
+          ssl_certificate     /etc/letsencrypt/live/{{ ansible_fqdn }}/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/{{ ansible_fqdn }}/privkey.pem;
+          ssl_protocols       TLSv1.2 TLSv1.3;
+          ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+          ssl_prefer_server_ciphers off;
+
+          location /bigbluebutton/api {
+            proxy_pass http://127.0.0.1:3000/bigbluebutton/api;
+
+            proxy_read_timeout 60s;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+          }
+
+          location / {
+            proxy_pass http://127.0.0.1:5000/;
+
+            proxy_read_timeout 60s;
+            proxy_redirect off;
+            proxy_http_version 1.1;
+          }
+    ufw_reset: no
+    ufw_applications:
+     - name: "certbotstandalone"
+    redis_port: 6379
+    redis_bind_interface: 127.0.0.1
+    ruby_install_from_source: yes
+    ruby_version: 2.6.6
+    ruby_download_url: https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.6.tar.gz
+    ruby_install_bundler: yes
+    postgresql_hba_entries:
+      - { type: local, database: all, user: postgres, auth_method: peer }
+      - { type: local, database: all, user: all, auth_method: peer }
+      - { type: host, database: all, user: all, address: '127.0.0.1/32', auth_method: trust }
+      - { type: host, database: all, user: all, address: '::1/128', auth_method: trust }
+    postgresql_users:
+      - name: scalelite
+        state: present
+    postgresql_databases:
+      - name: scalelite
+        owner: scalelite
+        state: present
+  pre_tasks:
+    - name: Ensure certbot ufw configuration is available
+      copy:
+        content: |
+          [certbotstandalone]
+          title=certbot standalone
+          description=certbot standalone service for certificate aquiry
+          ports=80,443/tcp
+        mode: 0644
+        dest: /etc/ufw/applications.d/certbotstandalone
+  roles:
+    - weareinteractive.ufw
+    - geerlingguy.certbot
+    - geerlingguy.nginx
+    - geerlingguy.redis
+    - role: geerlingguy.postgresql
+      become: yes
+    - geerlingguy.ruby
+    - scalelite
+
+- name: "Loadbalancer: bbb-easy-join"
+  hosts: loadbalancer
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    nodejs_version: "12.x"
+    bbb_easy_join_api_secret: "{{ scalelite_loadbalancer_secret }}"
+  pre_tasks:
+    - name: find out what the current scalelite config is
+      slurp:
+        src: /var/www/scalelite/.env
+      register: current_scalelite_env
+      ignore_errors: yes
+
+    - name: register current scalelite loadbalancer secret
+      set_fact:
+        scalelite_loadbalancer_secret: "{{ current_scalelite_env.content | b64decode | regex_findall('LOADBALANCER_SECRET=(.+)') | first }}"
+      when: not scalelite_loadbalancer_secret is defined and not current_scalelite_env.failed
+  roles:
+    - geerlingguy.nodejs
+    - bbb-easy-join

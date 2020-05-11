@@ -1,0 +1,5 @@
+---
+- name: restart bbb-easy-join
+  service:
+    name: bbb-easy-join
+    state: restarted

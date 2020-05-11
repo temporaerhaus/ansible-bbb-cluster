@@ -1,0 +1,154 @@
+---
+- name: Ensure group "scalelite" exists
+  group:
+    name: scalelite
+    state: present
+
+- name: Ensure user scalelite exists
+  user:
+    name: scalelite
+    shell: /bin/bash
+    password: '!'
+    update_password: on_create
+    groups: scalelite
+    state: present
+
+- name: Checkout scalelite repository
+  git:
+    repo: https://github.com/blindsidenetworks/scalelite.git
+    dest: /var/www/scalelite
+    version: "{{ scalelite_version }}"
+
+- name: Ensure scalelite is owner of /var/www/scalelite
+  file:
+    path: /var/www/scalelite
+    recurse: yes
+    owner: scalelite
+    group: scalelite
+
+- name: Ensure Bundler 2 is installed
+  gem:
+    name: bundler
+    state: latest
+    user_install: no
+
+- name: Ensure sqlite is installed
+  apt:
+    name:
+      - sqlite3
+      - libsqlite3-dev
+    state: present
+
+# bundler: deployment mode by cli argument is deprecated, so we're going to run this:
+- name: Ensure bundle in is deployment mode
+  command:
+    cmd: bundle config set deployment 'true'
+    chdir: /var/www/scalelite
+    creates: /var/www/scalelite/.bundle/config
+  become: yes
+  become_user: scalelite
+
+- name: Ensure gems for scalelite are installed
+  bundler:
+    state: present
+    exclude_groups:
+      - development
+      - test
+    chdir: /var/www/scalelite
+  become: yes
+  become_user: scalelite
+
+- name: find out what the current scalelite config is
+  slurp:
+    src: /var/www/scalelite/.env
+  register: current_scalelite_env
+  ignore_errors: yes
+
+- name: register current scalelite secret key base
+  set_fact:
+    scalelite_secret_key_base: "{{ current_scalelite_env.content | b64decode | regex_findall('SECRET_KEY_BASE=(.+)') | first }}"
+  when: not scalelite_secret_key_base is defined and not current_scalelite_env.failed
+
+- name: register current scalelite loadbalancer secret
+  set_fact:
+    scalelite_loadbalancer_secret: "{{ current_scalelite_env.content | b64decode | regex_findall('LOADBALANCER_SECRET=(.+)') | first }}"
+  when: not scalelite_loadbalancer_secret is defined and not current_scalelite_env.failed
+
+- name: Generate scalelite secret key base
+  command: openssl rand -hex 64
+  register: openssl_rand64
+  check_mode: no
+  when: not scalelite_secret_key_base is defined
+
+- name: Register secret key base
+  set_fact:
+    scalelite_secret_key_base: "{{ openssl_rand64.stdout }}"
+  when: not scalelite_secret_key_base is defined and openssl_rand64 is defined
+
+- name: Generate scalelite loadbalancer secret
+  command: openssl rand -hex 32
+  register: openssl_rand32
+  check_mode: no
+  when: not scalelite_loadbalancer_secret is defined
+
+- name: Register loadbalancer secret
+  set_fact:
+    scalelite_loadbalancer_secret: "{{ openssl_rand32.stdout }}"
+  when: not scalelite_loadbalancer_secret is defined
+
+- name: Ensure environment file for scalelite and openssl_rand32 is defined
+  template:
+    src: env.j2
+    dest: /var/www/scalelite/.env
+    owner: 'scalelite'
+    group: 'scalelite'
+
+- name: Ensure systemd unit for scalelite api
+  template:
+    src: scalelite-api.service
+    dest: /etc/systemd/system/scalelite-api.service
+
+- name: Ensure systemd unit for scalelite poller
+  template:
+    src: scalelite-poller.service
+    dest: /etc/systemd/system/scalelite-poller.service
+
+- name: Ensure systemd target for scalelite
+  template:
+    src: scalelite.target
+    dest: /etc/systemd/system/scalelite.target
+
+- name: Enable scalelite units
+  systemd:
+    daemon_reload: yes
+    name: "{{ item }}"
+    enabled: yes
+  with_items:
+    - scalelite-api
+    - scalelite-poller
+
+- name: Count scalelite database tables
+  shell:
+    cmd: "psql -h 127.0.0.1 -U scalelite scalelite -qAt -c 'select count(*) from pg_stat_user_tables;'"
+  check_mode: no
+  register: scalelite_database_tablecount
+
+- name: Ensure database schema is loaded
+  shell:
+    chdir: /var/www/scalelite
+    executable: /bin/bash
+    cmd: "set -o allexport; source .env; set +o allexport; bundle exec rails db:schema:load"
+  become: yes
+  become_user: scalelite
+  when: scalelite_database_tablecount.stdout|int <= 1
+
+- name: Ensure scalelite-api is started
+  systemd:
+    name: scalelite-api
+    state: started
+
+- name: Ensure scalelite-poller is started
+  systemd:
+    name: scalelite-poller
+    state: started
+

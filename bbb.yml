@@ -1,0 +1,83 @@
+---
+- name: BigBlueButton
+  hosts: bbb
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    nginx_ppa_use: yes
+    nginx_ppa_version: stable
+    bbb_letsencrypt_enable: yes
+    bbb_letsencrypt_email: "{{ letsencrypt_email }}"
+    bbb_coturn_enable: no
+    bbb_turn_enable: yes
+    bbb_turn_server: "turn-1.verschwoer.haus"
+    bbb_turn_secret: "{{ turn_secret }}"
+    bbb_greenlight_enable: no
+    bbb_api_demos_enable: no
+    bbb_disable_recordings: yes
+    ufw_reset: no
+    ufw_applications:
+     - name: "Nginx Full"
+     - name: "freeswitch"
+  pre_tasks:
+    - name: Ensure freeswitch ufw configuration is available
+      copy:
+        content: |
+          [freeswitch]
+          title=freeswitch
+          description=freeswitch telecom stack
+          ports=16384:32768/udp
+        mode: 0644
+        dest: /etc/ufw/applications.d/freeswitch
+  roles:
+    - geerlingguy.nginx
+    - weareinteractive.ufw
+    - n0emis.bigbluebutton
+  tasks:
+    - name: ensure http call to root is redirected
+      copy:
+        content: |
+          location = / {
+            return 301 https://bbb.ulm.dev;
+          }
+        mode: 0755
+        dest: /etc/bigbluebutton/nginx/redirectroot.nginx
+      notify: reload nginx
+    - name: ensure stun contains port
+      lineinfile:
+        path: /usr/share/bbb-web/WEB-INF/classes/spring/turn-stun-servers.xml
+        regex: '^\s*<constructor-arg index="0" value="stun:{{ bbb_turn_server }}"/>'
+        line: '<constructor-arg index="0" value="stun:{{ bbb_turn_server }}:443"/>'
+      notify: restart bigbluebutton
+    - name: ensure redirect happens to base
+      lineinfile:
+        path: /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties
+        regex: '^\s*bigbluebutton.web.logoutURL=(.+)'
+        line: 'bigbluebutton.web.logoutURL=https://bbb.ulm.dev'
+      notify: restart bigbluebutton
+
+- name: BigBlueButton Exporter
+  hosts: bbb
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    bbb_exporter_version: 664777e097c8dcfd2da20de1e208d02a113171eb
+    bbb_exporter_api_base_url: "https://{{ ansible_fqdn }}/bigbluebutton/"
+    # bbb_exporter_api_secret:  # is read and set below
+    ufw_reset: no
+    ufw_applications:
+     - name: "bbb-exporter"
+  pre_tasks:
+    - name: Register bbb conf
+      command: bbb-conf --secret
+      register: bbb_conf_result
+      check_mode: no
+    - name: Extract bbb secret
+      set_fact:
+        bbb_exporter_api_secret: "{{ bbb_conf_result.stdout | regex_search('Secret: ([a-zA-Z0-9]*)', multiline=True) |  regex_replace('Secret: ') }}"
+        cacheable: yes
+  roles:
+    - bbb-exporter
+    - weareinteractive.ufw
