@@ -11,11 +11,55 @@
     bbb_letsencrypt_email: "{{ letsencrypt_email }}"
     bbb_coturn_enable: no
     bbb_turn_enable: yes
-    bbb_turn_server: "turn-1.verschwoer.haus"
-    bbb_turn_secret: "{{ turn_secret }}"
+    bbb_stun_servers:
+      - server: "turn-1.verschwoer.haus:443"
+    bbb_turn_servers:
+      - server: "turn-1.verschwoer.haus"
+        port: "443"
+        secret: "{{ turn_secret }}"
+        tls: false
+      - server: "turn-1.verschwoer.haus"
+        port: "443"
+        secret: "{{ turn_secret }}"
+        tls: true
     bbb_greenlight_enable: no
     bbb_api_demos_enable: no
     bbb_disable_recordings: yes
+    bbb_dialplan_quality: "cdquality"
+    bbb_mute_on_start: no
+    bbb_dialin_mask_caller: yes
+    bbb_meteor:
+      public:
+        app:
+          enableMultipleCameras: true
+        kurento:
+          cameraProfiles:
+            - bitrate: 100
+              default: false
+              id: low
+              name: Low
+            - bitrate: 200
+              default: true
+              id: medium
+              name: Medium
+            - bitrate: 500
+              default: false
+              id: high
+              name: High
+            - bitrate: 800
+              default: false
+              id: hd
+              name: High definition
+            - bitrate: 1200
+              default: false
+              id: ultrahd
+              name: Ultra High definition
+          screenshare:
+            constraints:
+              video:
+                frameRate:
+                  ideal: 15
+                  max: 30
     ufw_reset: no
     ufw_applications:
      - name: "Nginx Full"
@@ -37,6 +81,7 @@
   tasks:
     - name: ensure http call to root is redirected
       copy:
+        # FIXME: var
         content: |
           location = / {
             return 301 https://bbb.ulm.dev;
@@ -44,26 +89,22 @@
         mode: 0755
         dest: /etc/bigbluebutton/nginx/redirectroot.nginx
       notify: reload nginx
-    - name: ensure stun contains port
-      lineinfile:
-        path: /usr/share/bbb-web/WEB-INF/classes/spring/turn-stun-servers.xml
-        regex: '^\s*<constructor-arg index="0" value="stun:{{ bbb_turn_server }}"/>'
-        line: '<constructor-arg index="0" value="stun:{{ bbb_turn_server }}:443"/>'
-      notify: restart bigbluebutton
-    - name: ensure redirect happens to base
-      lineinfile:
-        path: /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties
-        regex: '^\s*bigbluebutton.web.logoutURL=(.+)'
-        line: 'bigbluebutton.web.logoutURL=https://bbb.ulm.dev'
-      notify: restart bigbluebutton
-
+    - name: FreeSWITCH dialplan muted-sound
+      replace:
+        path: /opt/freeswitch/etc/freeswitch/autoload_configs/conference.conf.xml
+        after: '<profile name="{{ bbb_dialplan_quality }}">'
+        before: '</profile>'
+        regexp: '<param name="muted-sound" value=".*"/>'
+        replace: '<!-- no muted-sound -->'
+      notify:
+      - restart bigbluebutton
 - name: BigBlueButton Exporter
   hosts: bbb
   become: yes
   vars_files:
     - vars.yml
   vars:
-    bbb_exporter_version: 664777e097c8dcfd2da20de1e208d02a113171eb
+    bbb_exporter_version: 'v0.6.0'
     bbb_exporter_api_base_url: "https://{{ ansible_fqdn }}/bigbluebutton/"
     # bbb_exporter_api_secret:  # is read and set below
     ufw_reset: no

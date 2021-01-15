@@ -1,11 +1,17 @@
 [all]
-# bbb01.verschwoer.haus
+bbb01.verschwoer.haus ansible_host=129.143.87.242
 bbb02.verschwoer.haus ansible_host=129.143.87.243
+# bbb03.verschwoer.haus ansible_host=129.143.87.247
+#bbb04.verschwoer.haus ansible_host=45.12.171.5
+#bbb05.verschwoer.haus ansible_host=45.12.171.6
 bbb-lb.verschwoer.haus ansible_host=129.143.87.245
 
 [bbb]
-# bbb01.verschwoer.haus
+bbb01.verschwoer.haus
 bbb02.verschwoer.haus
+# bbb03.verschwoer.haus
+#bbb04.verschwoer.haus
+#bbb05.verschwoer.haus
 
 [loadbalancer]
 bbb-lb.verschwoer.haus

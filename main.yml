@@ -32,15 +32,19 @@
         state: present
       when: ansible_default_ipv4.address is defined
 
+    - name: disable unattended updates
+      debconf:
+        name: unattended-upgrades
+        question: unattended-upgrades/enable_auto_updates
+        value: 'false'
+        vtype: boolean
+
 - name: Monitored host
   hosts: all
   become: yes
   vars_files:
     - vars.yml
   vars:
-    _node_exporter_binary_install_dir: '/opt/node_exporter'
-    _node_exporter_system_group: 'prometheus'
-    _node_exporter_system_user: 'prometheus'
     ufw_reset: no
     ufw_applications:
      - name: "node-exporter"
