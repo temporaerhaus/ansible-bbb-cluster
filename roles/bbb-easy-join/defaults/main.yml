@@ -2,6 +2,6 @@
 bbb_easy_join_version: 17664edbf5a3001eaaceda03313ca12bb124f03c
 bbb_easy_join_api_url: "https://{{ ansible_fqdn }}/bigbluebutton"
 # bbb_easy_join_api_secret
-bbb_easy_join_welcome_message: "Welcome to <b>%%CONFNAME%%</b>!<br><br>Invite others with following URL: %%JOINURL%%<br><br>Use a headset to avoid causing background noise for others."
+bbb_easy_join_welcome_message: "Welcome to <b>%%CONFNAME%%</b>!<br><br>Invite others with following URL:<br>%%JOINURL%%<br><br>Use a headset to avoid causing background noise for others."
 bbb_easy_join_listen_address: "127.0.0.1"
 bbb_easy_join_listen_port: "5000"
