@@ -71,4 +71,5 @@
     - weareinteractive.ufw
 
 - import_playbook: bbb.yml
+- import_playbook: bbb_exporter.yml
 - import_playbook: loadbalancer.yml

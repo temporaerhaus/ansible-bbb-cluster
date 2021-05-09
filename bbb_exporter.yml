@@ -1,0 +1,25 @@
+---
+- name: BigBlueButton Exporter
+  hosts: bbb
+  become: yes
+  vars_files:
+    - vars.yml
+  vars:
+    bbb_exporter_version: 'v0.6.0'
+    bbb_exporter_api_base_url: "https://{{ ansible_fqdn }}/bigbluebutton/"
+    # bbb_exporter_api_secret:  # is read and set below
+    ufw_reset: no
+    ufw_applications:
+     - name: "bbb-exporter"
+  pre_tasks:
+    - name: Register bbb conf
+      command: bbb-conf --secret
+      register: bbb_conf_result
+      check_mode: no
+    - name: Extract bbb secret
+      set_fact:
+        bbb_exporter_api_secret: "{{ bbb_conf_result.stdout | regex_search('Secret: ([a-zA-Z0-9]*)', multiline=True) |  regex_replace('Secret: ') }}"
+        cacheable: yes
+  roles:
+    - bbb-exporter
+    - weareinteractive.ufw
