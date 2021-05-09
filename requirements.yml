@@ -4,7 +4,8 @@ roles:
     version: 0.22.0
   - name: geerlingguy.nginx
     version: 2.8.0
-  - name: n0emis.bigbluebutton
+  - name: ebbba.bigbluebutton
+    version: 'v2.3.0-a1.0.0'
   - name: weareinteractive.ufw
     version: 1.10.0
   - name: geerlingguy.redis

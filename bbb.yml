@@ -60,6 +60,10 @@
                 frameRate:
                   ideal: 15
                   max: 30
+    bbb_dialin_footer: ""
+    bbb_default_welcome_message_footer: ""
+    bbb_firewall_ufw:
+      enabled: no # we're managing it ourselves:
     ufw_reset: no
     ufw_applications:
      - name: "Nginx Full"
@@ -77,7 +81,7 @@
   roles:
     - geerlingguy.nginx
     - weareinteractive.ufw
-    - n0emis.bigbluebutton
+    - ebbba.bigbluebutton
   tasks:
     - name: ensure http call to root is redirected
       copy:
