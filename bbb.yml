@@ -28,40 +28,13 @@
     bbb_dialplan_quality: "cdquality"
     bbb_mute_on_start: no
     bbb_dialin_mask_caller: yes
+    bbb_dialin_footer: ""
+    bbb_default_welcome_message_footer: ""
     bbb_meteor:
       public:
         app:
           enableMultipleCameras: true
         kurento:
-          cameraProfiles:
-            - bitrate: 100
-              default: false
-              id: low
-              name: Low
-            - bitrate: 200
-              default: true
-              id: medium
-              name: Medium
-            - bitrate: 500
-              default: false
-              id: high
-              name: High
-            - bitrate: 800
-              default: false
-              id: hd
-              name: High definition
-            - bitrate: 1200
-              default: false
-              id: ultrahd
-              name: Ultra High definition
-          screenshare:
-            constraints:
-              video:
-                frameRate:
-                  ideal: 15
-                  max: 30
-    bbb_dialin_footer: ""
-    bbb_default_welcome_message_footer: ""
     bbb_firewall_ufw:
       enabled: no # we're managing it ourselves:
     ufw_reset: no
