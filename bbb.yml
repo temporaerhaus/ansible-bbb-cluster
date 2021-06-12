@@ -36,6 +36,9 @@
           enableMultipleCameras: true
           mirrorOwnWebcam: true
         kurento:
+          cameraSortingModes:
+            defaultSorting: LOCAL_ALPHABETICAL
+            paginationSorting: LOCAL_PRESENTER_ALPHABETICAL
     bbb_firewall_ufw:
       enabled: no # we're managing it ourselves:
     ufw_reset: no
