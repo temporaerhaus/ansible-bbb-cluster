@@ -34,6 +34,7 @@
       public:
         app:
           enableMultipleCameras: true
+          mirrorOwnWebcam: true
         kurento:
     bbb_firewall_ufw:
       enabled: no # we're managing it ourselves:
