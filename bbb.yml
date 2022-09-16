@@ -28,6 +28,7 @@
     bbb_dialplan_quality: "cdquality"
     bbb_mute_on_start: no
     bbb_freeswitch_ipv6: true
+    bbb_freeswitch_muted_sound: no
     bbb_dialin_mask_caller: yes
     bbb_dialin_footer: ""
     bbb_default_welcome_message_footer: ""
@@ -99,12 +100,3 @@
         mode: 0755
         dest: /etc/bigbluebutton/nginx/redirectroot.nginx
       notify: reload nginx
-    - name: FreeSWITCH dialplan muted-sound
-      replace:
-        path: /opt/freeswitch/etc/freeswitch/autoload_configs/conference.conf.xml
-        after: '<profile name="{{ bbb_dialplan_quality }}">'
-        before: '</profile>'
-        regexp: '<param name="muted-sound" value=".*"/>'
-        replace: '<!-- no muted-sound -->'
-      notify:
-      - restart bigbluebutton
