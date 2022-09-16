@@ -17,11 +17,21 @@
     system: yes
     state: present
 
+- name: Ensure /var/www/bbb-exporter exists
+  file:
+    path: /var/www/bbb-exporter
+    state: directory
+    mode: '0755'
+    owner: bbb-exporter
+    group: bbb-exporter
+
 - name: Checkout bbb-exporter
   git:
     repo: https://github.com/greenstatic/bigbluebutton-exporter.git
     dest: /var/www/bbb-exporter
     version: "{{ bbb_exporter_version }}"
+  become: yes
+  become_user: bbb-exporter
 
 - name: Ensure bbb-exporter is owner of /var/www/bbb-exporter
   file:
