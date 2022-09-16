@@ -67,7 +67,7 @@
         mode: 0644
         dest: /etc/ufw/applications.d/node-exporter
   roles:
-    - cloudalchemy.node-exporter
+    - cloudalchemy.node_exporter
     - weareinteractive.ufw
 
 - import_playbook: bbb.yml
