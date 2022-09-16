@@ -27,15 +27,44 @@
     bbb_disable_recordings: yes
     bbb_dialplan_quality: "cdquality"
     bbb_mute_on_start: no
+    bbb_freeswitch_ipv6: true
     bbb_dialin_mask_caller: yes
     bbb_dialin_footer: ""
     bbb_default_welcome_message_footer: ""
+    bbb_allow_mods_to_eject_cameras: true
+    bbb_learning_dashboard_enabled: false
+    bbb_web_logouturl: "https://bbb.verschwoer.haus"
+    _multikurento:
+      videoMediaServer: mediasoup
+      screenshareMediaServer: mediasoup
+      audioMediaServer: mediasoup
+      listenOnlyMediaServer: mediasoup
+      localIpAddress: "{{ ansible_default_ipv4.address }}"
+      mediasoup:
+        webrtc:
+          listenIps:
+            - ip: "0.0.0.0"
+              announcedIp: "{{ ansible_default_ipv4.address }}"
+            - ip: "::"
+              announcedIp: "{{ ansible_default_ipv6.address }}"
+        plainRtp:
+          listenIps:
+            - ip: "0.0.0.0"
+              announcedIp: "{{ ansible_default_ipv4.address }}"
+            - ip: "::"
+              announcedIp: "{{ ansible_default_ipv6.address }}"
+    bbb_webrtc_sfu_multikurento: "{{ bbb_webrtc_sfu_multikurento_default | combine(_multikurento)  }}"
     bbb_meteor:
       public:
+        note:
+          url: "https://{{ inventory_hostname }}/pad"
+        pads:
+          url: "https://{{ inventory_hostname }}/pad"
         app:
           enableMultipleCameras: true
           mirrorOwnWebcam: true
         kurento:
+          wsUrl: "wss://{{ inventory_hostname }}/bbb-webrtc-sfu"
           cameraSortingModes:
             defaultSorting: LOCAL_ALPHABETICAL
             paginationSorting: LOCAL_PRESENTER_ALPHABETICAL
@@ -65,7 +94,7 @@
         # FIXME: var
         content: |
           location = / {
-            return 301 https://bbb.ulm.dev;
+            return 301 https://bbb.verschwoer.haus;
           }
         mode: 0755
         dest: /etc/bigbluebutton/nginx/redirectroot.nginx
