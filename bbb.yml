@@ -85,6 +85,17 @@
           ports=16384:32768/udp
         mode: 0644
         dest: /etc/ufw/applications.d/freeswitch
+    - name: Ensures systemd freeswitch override dir exists
+      file: 
+        path: /etc/systemd/system/freeswitch.service.d
+        state: directory
+    - name: Override freeswitch CPUSchedulingPolicy
+      copy:
+        content: |
+          [Service]
+          CPUSchedulingPolicy=
+        mode: 0644
+        dest: /etc/systemd/system/freeswitch.service.d/override.conf
   roles:
     - geerlingguy.nginx
     - weareinteractive.ufw
